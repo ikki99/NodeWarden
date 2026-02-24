@@ -1,7 +1,14 @@
-# NodeWarden
+# NodeWarden：运行在 Cloudflare Workers 的 Bitwarden 第三方服务端
+[![Powered by Cloudflare](https://img.shields.io/badge/Powered%20by-Cloudflare-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
+[![License: LGPL-3.0](https://img.shields.io/badge/License-LGPL--3.0-2ea44f)](./LICENSE)
+[![Deploy to Cloudflare Workers](https://img.shields.io/badge/Deploy%20to-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](https://deploy.workers.cloudflare.com/?url=https://github.com/shuaiplus/NodeWarden)
+[![Latest Release](https://img.shields.io/github/v/release/shuaiplus/NodeWarden?display_name=tag)](https://github.com/shuaiplus/NodeWarden/releases/latest)
+[![Sync Upstream](https://github.com/shuaiplus/NodeWarden/actions/workflows/sync-upstream.yml/badge.svg)](https://github.com/shuaiplus/NodeWarden/actions/workflows/sync-upstream.yml)
+
+[更新日志](./RELEASE_NOTES.md) • [提交问题](https://github.com/shuaiplus/NodeWarden/issues/new/choose) • [最新发布](https://github.com/shuaiplus/NodeWarden/releases/latest)
+
 English：[`README_EN.md`](./README_EN.md)
 
-运行在 **Cloudflare Workers** 上的 **Bitwarden 第三方服务端**。
 
 > **免责声明**  
 > 本项目仅供学习交流使用。我们不对任何数据丢失负责，强烈建议定期备份您的密码库。  
@@ -47,6 +54,27 @@ English：[`README_EN.md`](./README_EN.md)
 2. [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/shuaiplus/nodewarden)
 3. 打开部署后生成的链接，并根据网页提示完成后续操作。
 
+### CLI 部署
+
+```powershell
+# 先把仓库拉到本地
+git clone https://github.com/shuaiplus/NodeWarden.git
+cd NodeWarden
+
+# 安装依赖
+npm install
+
+# Cloudflare CLI 登录
+npx wrangler login
+
+# 创建云资源（D1 + R2）
+npx wrangler d1 create nodewarden-db
+npx wrangler r2 bucket create nodewarden-attachments
+
+# 部署
+npx wrangler deploy
+```
+
 ---
 
 ## 本地开发
@@ -57,16 +85,7 @@ English：[`README_EN.md`](./README_EN.md)
 npm install
 npm run dev
 ```
-
-## 可选：登录 TOTP（2FA）
-
-- 在 Workers 的 Variables and Secrets 里新增 Secret：`TOTP_SECRET`（Base32）。
-- 配置了 `TOTP_SECRET` 就启用登录 TOTP；删除该变量即关闭。
-- 客户端流程：密码 -> TOTP 验证码。
-- 支持“记住此设备”30 天。
-
 ---
-
 ## 常见问题
 
 **Q: 如何备份数据？**  

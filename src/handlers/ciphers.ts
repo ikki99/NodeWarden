@@ -5,6 +5,31 @@ import { generateUUID } from '../utils/uuid';
 import { deleteAllAttachmentsForCipher } from './attachments';
 import { parsePagination, encodeContinuationToken } from '../utils/pagination';
 
+// Android 2026.2.0 expects fido2Credentials[].counter to be a string.
+export function normalizeCipherLoginForCompatibility(login: any): any {
+  if (!login || typeof login !== 'object') return login ?? null;
+
+  const fido2 = Array.isArray(login.fido2Credentials)
+    ? login.fido2Credentials.map((cred: any) => {
+        if (!cred || typeof cred !== 'object') return cred;
+        const rawCounter = cred.counter;
+        const counter =
+          rawCounter === null || rawCounter === undefined
+            ? '0'
+            : String(rawCounter);
+        return {
+          ...cred,
+          counter,
+        };
+      })
+    : login.fido2Credentials;
+
+  return {
+    ...login,
+    fido2Credentials: fido2,
+  };
+}
+
 // Format attachments for API response
 export function formatAttachments(attachments: Attachment[]): any[] | null {
   if (attachments.length === 0) return null;
@@ -27,6 +52,7 @@ export function formatAttachments(attachments: Attachment[]): any[] | null {
 export function cipherToResponse(cipher: Cipher, attachments: Attachment[] = []): CipherResponse {
   // Strip internal-only fields that must not appear in the API response
   const { userId, createdAt, updatedAt, deletedAt, ...passthrough } = cipher;
+  const normalizedLogin = normalizeCipherLoginForCompatibility((passthrough as any).login ?? null);
 
   return {
     // Pass through ALL stored cipher fields (known + unknown)
@@ -48,6 +74,7 @@ export function cipherToResponse(cipher: Cipher, attachments: Attachment[] = [])
     object: 'cipher',
     collectionIds: [],
     attachments: formatAttachments(attachments),
+    login: normalizedLogin,
     encryptedFor: null,
   };
 }
@@ -137,6 +164,7 @@ export async function handleCreateCipher(request: Request, env: Env, userId: str
     updatedAt: now,
     deletedAt: null,
   };
+  cipher.login = normalizeCipherLoginForCompatibility(cipher.login);
 
   await storage.saveCipher(cipher);
   await storage.updateRevisionDate(userId);
@@ -179,6 +207,7 @@ export async function handleUpdateCipher(request: Request, env: Env, userId: str
     updatedAt: new Date().toISOString(),
     deletedAt: existingCipher.deletedAt,
   };
+  cipher.login = normalizeCipherLoginForCompatibility(cipher.login);
 
   await storage.saveCipher(cipher);
   await storage.updateRevisionDate(userId);
@@ -202,6 +231,29 @@ export async function handleDeleteCipher(request: Request, env: Env, userId: str
   await storage.updateRevisionDate(userId);
 
   return jsonResponse(cipherToResponse(cipher));
+}
+
+// DELETE /api/ciphers/:id (compat mode)
+// Bitwarden clients may call DELETE on a trashed item to purge it permanently.
+// For compatibility:
+// - If item is active -> soft delete.
+// - If item is already soft-deleted -> hard delete.
+export async function handleDeleteCipherCompat(request: Request, env: Env, userId: string, id: string): Promise<Response> {
+  const storage = new StorageService(env.DB);
+  const cipher = await storage.getCipher(id);
+
+  if (!cipher || cipher.userId !== userId) {
+    return errorResponse('Cipher not found', 404);
+  }
+
+  if (cipher.deletedAt) {
+    await deleteAllAttachmentsForCipher(env, id);
+    await storage.deleteCipher(id, userId);
+    await storage.updateRevisionDate(userId);
+    return new Response(null, { status: 204 });
+  }
+
+  return handleDeleteCipher(request, env, userId, id);
 }
 
 // DELETE /api/ciphers/:id (permanent)

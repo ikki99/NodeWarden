@@ -1,7 +1,13 @@
-# NodeWarden
-中文文档：[`README.md`](./README.md)
+# NodeWarden：A Bitwarden-compatible server for Cloudflare Workers
+[![Powered by Cloudflare](https://img.shields.io/badge/Powered%20by-Cloudflare-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
+[![License: LGPL-3.0](https://img.shields.io/badge/License-LGPL--3.0-2ea44f)](./LICENSE)
+[![Deploy to Cloudflare Workers](https://img.shields.io/badge/Deploy%20to-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](https://deploy.workers.cloudflare.com/?url=https://github.com/shuaiplus/NodeWarden)
+[![Latest Release](https://img.shields.io/github/v/release/shuaiplus/NodeWarden?display_name=tag)](https://github.com/shuaiplus/NodeWarden/releases/latest)
+[![Sync Upstream](https://github.com/shuaiplus/NodeWarden/actions/workflows/sync-upstream.yml/badge.svg)](https://github.com/shuaiplus/NodeWarden/actions/workflows/sync-upstream.yml)
 
-A **Bitwarden-compatible** server that runs on **Cloudflare Workers**.
+[Release Notes](./RELEASE_NOTES.md) • [Report an Issue](https://github.com/shuaiplus/NodeWarden/issues/new/choose) • [Latest Release](https://github.com/shuaiplus/NodeWarden/releases/latest)
+
+中文文档：[`README.md`](./README.md)
 
 > Disclaimer
 > - This project is for learning and communication only.
@@ -51,6 +57,27 @@ A **Bitwarden-compatible** server that runs on **Cloudflare Workers**.
 2. [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/shuaiplus/nodewarden)
 3. Open the generated service URL and follow the on-page instructions.
 
+### CLI deploy 
+
+```powershell
+# Clone repository
+git clone https://github.com/shuaiplus/NodeWarden.git
+cd NodeWarden
+
+# Install dependencies
+npm install
+
+# Cloudflare CLI login
+npx wrangler login
+
+# Create cloud resources (D1 + R2)
+npx wrangler d1 create nodewarden-db
+npx wrangler r2 bucket create nodewarden-attachments
+
+# Deploy
+npx wrangler deploy
+```
+
 
 ## Local development
 
@@ -60,14 +87,6 @@ This repo is a Cloudflare Workers TypeScript project (Wrangler).
 npm install
 npm run dev
 ```
-
-## Optional Login TOTP (2FA)
-
-- Add Workers Secret `TOTP_SECRET` (Base32) to enable login TOTP.
-- Remove `TOTP_SECRET` to disable login TOTP.
-- Client flow: password -> TOTP code.
-- "Remember this device" is supported for 30 days.
-
 ---
 
 ## FAQ
