@@ -3,7 +3,16 @@ const TOTP_DIGITS = 6;
 const TOTP_WINDOW = 1; // allow previous/current/next step for small clock drift
 
 function normalizeBase32(input: string): string {
-  return input.toUpperCase().replace(/[\s-]/g, '').replace(/=+$/g, '');
+  const raw = String(input || '').toUpperCase();
+  let out = '';
+  for (const char of raw) {
+    if (char === ' ' || char === '\t' || char === '\n' || char === '\r' || char === '-') continue;
+    out += char;
+  }
+  while (out.endsWith('=')) {
+    out = out.slice(0, -1);
+  }
+  return out;
 }
 
 function base32Decode(input: string): Uint8Array | null {
@@ -61,19 +70,36 @@ function normalizeToken(token: string): string {
   return token.replace(/\s+/g, '');
 }
 
-export async function verifyTotpToken(secretRaw: string, tokenRaw: string, nowMs: number = Date.now()): Promise<boolean> {
+export async function findMatchingTotpCounter(
+  secretRaw: string,
+  tokenRaw: string,
+  nowMs: number = Date.now()
+): Promise<number | null> {
   const token = normalizeToken(tokenRaw);
-  if (!/^\d{6}$/.test(token)) return false;
+  if (!/^\d{6}$/.test(token)) return null;
 
   const secret = base32Decode(secretRaw);
-  if (!secret) return false;
+  if (!secret) return null;
 
   const currentCounter = Math.floor(nowMs / 1000 / TOTP_STEP_SECONDS);
+  let matchedCounter: number | null = null;
   for (let delta = -TOTP_WINDOW; delta <= TOTP_WINDOW; delta++) {
-    const expected = await hotp(secret, currentCounter + delta);
-    if (expected === token) return true;
+    const candidateCounter = currentCounter + delta;
+    const expected = await hotp(secret, candidateCounter);
+    // Constant-time comparison: always check all windows, never short-circuit.
+    const a = new TextEncoder().encode(expected);
+    const b = new TextEncoder().encode(token);
+    let diff = a.length ^ b.length;
+    for (let i = 0; i < a.length && i < b.length; i++) {
+      diff |= a[i] ^ b[i];
+    }
+    if (diff === 0 && matchedCounter == null) matchedCounter = candidateCounter;
   }
-  return false;
+  return matchedCounter;
+}
+
+export async function verifyTotpToken(secretRaw: string, tokenRaw: string, nowMs: number = Date.now()): Promise<boolean> {
+  return (await findMatchingTotpCounter(secretRaw, tokenRaw, nowMs)) != null;
 }
 
 export function isTotpEnabled(secretRaw: string | undefined | null): boolean {
